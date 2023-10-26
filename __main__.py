@@ -1,4 +1,5 @@
 import time
+import os
 
 class Node:
     def __init__(self, position:(), parent:()):
@@ -89,7 +90,6 @@ def astar(maze, start, end):
             open_list.append(child)
 
 def main():
-
     maze = [['▓', '▓', '▓', '▓', '▓'],
             ['▓', ' ', ' ', '$', '▓'],
             ['▓', ' ', '▓', ' ', '▓'],
@@ -100,14 +100,22 @@ def main():
 
     path = astar(maze, start, end)
     
-    for step in path:
+    if path is None:
+        print("Não foi encontrado um caminho válido.")
+        return
+
+    while path:
+        step = path.pop()
         maze[step[0]][step[1]] = "☺"
-        
-        print("\n")
-        
+
+        os.system("cls" if os.name == "nt" else "clear")  # Limpa a tela do console
+
         for row in maze:
-          print("".join(row))
-          
+            print("".join(row))
+        
+        if not path:
+            break
+
         input("Pressione Enter para o próximo movimento: ")
 
 if __name__ == '__main__':
