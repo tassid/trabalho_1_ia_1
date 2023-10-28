@@ -1,140 +1,115 @@
 import pygame
 import time
-import os
 
-class Node:
-    def __init__(self, position: (), parent: ()):
-        self.position = position
-        self.parent = parent
-        self.g = 0  # Custo para mover do nó inicial para o nó atual
-        self.h = 0  # Custo para mover do nó atual para o nó final
-        self.f = 0  # Custo total
+class Nodo:
+    def __init__(self, posicao, pai=None):
+        self.posicao = posicao
+        self.pai = pai
+        self.g = 0
+        self.h = 0
+        self.f = 0
 
-    def __eq__(self, other):
-        return self.position == other.position
+    def __eq__(self, outro):
+        return self.posicao == outro.posicao
 
-def astar(maze, start, end):
-    # Cria nó inicial e final
-    start_node = Node(start, None)
-    end_node = Node(end, None)
+def busca_a_estrela(mapa, inicio, fim):
+    lista_aberta = []
+    lista_fechada = []
 
-    # Inicializa ambas listas aberta e fechada
-    open_list = []
-    closed_list = []
+    nodo_inicio = Nodo(inicio)
+    nodo_fim = Nodo(fim)
 
-    # Adiciona o nó inicial
-    open_list.append(start_node)
+    lista_aberta.append(nodo_inicio)
 
-    # Loop até que a lista aberta esteja vazia
-    while len(open_list) > 0:
-        # Pega o nó atual
-        current_node = open_list[0]
-        current_index = 0
-        for index, item in enumerate(open_list):
-            if item.f < current_node.f:
-                current_node = item
-                current_index = index
+    while lista_aberta:
+        nodo_atual = lista_aberta[0]
+        indice_atual = 0
 
-        # Remove o nó atual da lista aberta e adiciona à lista fechada
-        open_list.pop(current_index)
-        closed_list.append(current_node)
+        for indice, item in enumerate(lista_aberta):
+            if item.f < nodo_atual.f:
+                nodo_atual = item
+                indice_atual = indice
 
-        # Verifica se chegamos ao fim, retorna o caminho
-        if current_node == end_node:
-            path = []
-            current = current_node
-            while current is not None:
-                path.append(current.position)
-                current = current.parent
-            return path[::-1]  # Retorna o caminho invertido
+        lista_aberta.pop(indice_atual)
+        lista_fechada.append(nodo_atual)
 
-        # Gera filhos
-        children = []
-        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:  # Adjacente quadrado (cima, baixo, esquerda, direita)
+        if nodo_atual == nodo_fim:
+            caminho = []
+            atual = nodo_atual
+            while atual is not None:
+                caminho.append(atual.posicao)
+                atual = atual.pai
+            return caminho[::-1]
 
-            # Pega a posição do nó
-            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+        filhos = []
+        movimentos = [(0, -1), (0, 1), (-1, 0), (1, 0)]
 
-            # Verifica se está dentro do labirinto
-            if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (
-                    len(maze[len(maze) - 1]) - 1) or node_position[1] < 0:
-                continue
+        for novo_movimento in movimentos:
+            posicao_nova = (nodo_atual.posicao[0] + novo_movimento[0], nodo_atual.posicao[1] + novo_movimento[1])
 
-            # Verifica se é uma parede
-            if maze[node_position[0]][node_position[1]] != ' ':
-                continue
+            if (0 <= posicao_nova[0] < len(mapa)) and (0 <= posicao_nova[1] < len(mapa[0])) and mapa[posicao_nova[0]][posicao_nova[1]] == ' ':
+                novo_nodo = Nodo(posicao_nova, nodo_atual)
+                filhos.append(novo_nodo)
 
-            # Cria novo nó
-            new_node = Node(node_position, current_node)
-
-            # Adiciona
-            children.append(new_node)
-
-        # Loop através dos filhos
-        for child in children:
-            # Filho está na lista fechada
-            for closed_child in closed_list:
-                if child == closed_child:
+        for filho in filhos:
+            for filho_fechado in lista_fechada:
+                if filho == filho_fechado:
                     continue
 
-            # Cria os valores f, g e h do filho
-            child.g = current_node.g + 1
-            child.h = ((child.position[0] - end_node.position[0]) ** 2) + (
-                    (child.position[1] - end_node.position[1]) ** 2)
-            child.f = child.g + child.h
+            filho.g = nodo_atual.g + 1
+            filho.h = ((filho.posicao[0] - nodo_fim.posicao[0]) ** 2) + ((filho.posicao[1] - nodo_fim.posicao[1]) ** 2)
+            filho.f = filho.g + filho.h
 
-            # Filho já está na lista aberta e o g é maior
-            for open_node in open_list:
-                if child == open_node and child.g > open_node.g:
+            for nodo_aberto in lista_aberta:
+                if filho == nodo_aberto and filho.g > nodo_aberto.g:
                     continue
 
-            # Adiciona o filho à lista aberta
-            open_list.append(child)
+            lista_aberta.append(filho)
 
-def draw_maze(screen, maze):
-    cell_size = 30
-    wall_color = (0, 0, 0)
-    path_color = (255, 255, 255)
-    for row_idx, row in enumerate(maze):
-        for col_idx, cell in enumerate(row):
-            if cell == '▓':
-                pygame.draw.rect(screen, wall_color, (col_idx * cell_size, row_idx * cell_size, cell_size, cell_size))
-            elif cell == ' ':
-                pygame.draw.rect(screen, path_color, (col_idx * cell_size, row_idx * cell_size, cell_size, cell_size))
+def desenhar_labirinto(tela, mapa):
+    tamanho_celula = 30
+    cor_parede = (0, 0, 0)
+    cor_caminho = (255, 255, 255)
+    for indice_linha, linha in enumerate(mapa):
+        for indice_coluna, celula in enumerate(linha):
+            if celula == '▓':
+                pygame.draw.rect(tela, cor_parede, (indice_coluna * tamanho_celula, indice_linha * tamanho_celula, tamanho_celula, tamanho_celula))
+            elif celula == ' ':
+                pygame.draw.rect(tela, cor_caminho, (indice_coluna * tamanho_celula, indice_linha * tamanho_celula, tamanho_celula, tamanho_celula))
 
 def main():
     pygame.init()
 
-    maze = [['▓', '▓', '▓', '▓', '▓'],
-            ['▓', ' ', ' ', '$', '▓'],
-            ['▓', ' ', '▓', ' ', '▓'],
-            ['▓', '☺', ' ', '$', '▓'],
-            ['▓', '▓', '▓', '▓', '▓']]
+    labirinto = [['▓', '▓', '▓', '▓', '▓'],
+                ['▓', ' ', ' ', '$', '▓'],
+                ['▓', ' ', '▓', ' ', '▓'],
+                ['▓', '☺', ' ', '$', '▓'],
+                ['▓', '▓', '▓', '▓', '▓']]
 
-    start = (3, 1)
-    end = (1, 3)
+    inicio = (3, 1)
+    fim = (1, 3)
 
-    path = astar(maze, start, end)
+    caminho = busca_a_estrela(labirinto, inicio, fim)
 
-    if path is None:
+    if caminho is None:
         print("Não foi encontrado um caminho válido.")
         return
 
-    screen_width = len(maze[0]) * 30
-    screen_height = len(maze) * 30
+    largura_tela = len(labirinto[0]) * 30
+    altura_tela = len(labirinto) * 30
 
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption("A* Maze Solver")
+    tela = pygame.display.set_mode((largura_tela, altura_tela))
+    pygame.display.set_caption("Resolutor de Labirinto A*")
 
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+    rodando = True
+    while rodando:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                rodando = False
 
-        for step in path:
-            maze[step[0]][step[1]] = "☺"
-            draw_maze(screen, maze)
+        for passo in caminho:
+            labirinto[passo[0]][passo[1]] = "☺"
+            desenhar_labirinto(tela, labirinto)
             pygame.display.update()
             time.sleep(0.5)
 
